@@ -16,7 +16,11 @@ export default function useChat({ roomId }: UseChatProps) {
   const [socketId, setSocketId] = useState<string>(""); // 소켓 ID 저장
 
   useEffect(() => {
-    const socketConnection = io("http://localhost:3000", {
+    // 개발/프로덕션 환경에 따라 소켓 URL 설정
+    const socketUrl =
+      process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000";
+
+    const socketConnection = io(socketUrl, {
       path: "/socket.io",
     });
 

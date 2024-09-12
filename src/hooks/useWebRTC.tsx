@@ -34,7 +34,7 @@ export default function useWebRTC(roomId: string) {
 
         // 개발/배포 환경에 따른 Socket.IO 경로 설정
         const socketUrl =
-          process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:3000";
+          process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:4000";
 
         const socket = io(socketUrl, {
           path: "/socket.io", // 서버와 일치하는 경로
