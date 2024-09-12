@@ -15,22 +15,25 @@ export default function Video({ roomId }: { roomId: string }) {
           : "grid-cols-3 grid-rows-3";
 
   return (
-    <div className={"overflow-hidden h-full"}>
+    <div className={"overflow-hidden w-full"}>
       <div className={`grid ${gridClass} gap-4`}>
         {/* 원격 비디오 */}
-        {peerConnections.map((peer, index) => (
-          <div key={index} className="relative order-1">
-            <h2 className="text-lg px-1 text-white text-shadow absolute">
-              Remote Video {index + 1}
-            </h2>
-            <video
-              ref={peer.remoteVideoRef}
-              autoPlay
-              playsInline
-              className=" w-full h-auto object-contain aspect-video"
-            />
-          </div>
-        ))}
+        {peerConnections.map((peer, index) => {
+          console.log(peer);
+          return (
+            <div key={index} className="relative order-1">
+              <h2 className="text-lg px-1 text-white text-shadow absolute">
+                Remote Video {index + 1}
+              </h2>
+              <video
+                ref={peer.remoteVideoRef}
+                autoPlay
+                playsInline
+                className=" w-full h-auto object-contain aspect-video"
+              />
+            </div>
+          );
+        })}
         {/* 로컬 비디오 */}
         <div className="relative order-last">
           <h2 className="text-lg px-1 text-white text-shadow absolute">

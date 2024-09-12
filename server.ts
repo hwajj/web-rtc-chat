@@ -1,28 +1,28 @@
-//aws서버
-import { createServer } from "http";
+import { createServer } from "http"; // HTTP 서버로 변경
 import { Server } from "socket.io";
 
-const port = 4000;
+const isProduction = process.env.NODE_ENV === "production";
 
-// HTTP 서버 생성
 const httpServer = createServer();
 
-// Socket.IO 서버 생성
 const io = new Server(httpServer, {
   path: "/socket.io",
   cors: {
-    origin: ["http://localhost:4000", "https://dae-hwa-jeong.netlify.app"],
+    origin: isProduction
+      ? ["https://dae-hwa-jeong.netlify.app"]
+      : ["http://localhost:4000"],
     methods: ["GET", "POST"],
   },
 });
 
-// 소켓 연결 시 처리
 io.on("connection", (socket) => {
   console.log(`User connected: ${socket.id}`);
 
   socket.on("join-room", (roomId: string) => {
     socket.join(roomId);
-    console.log(`>>>joined room :  ${socket.id}가 ${roomId} 으로 입장 `);
+
+    // 방에 있는 다른 사용자들에게 new-peer 이벤트 전송
+    socket.to(roomId).emit("new-peer", socket.id);
   });
 
   socket.on(
@@ -38,10 +38,11 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log(`User disconnected: ${socket.id}`);
+    // 방에 있는 다른 피어들에게 알림
+    socket.broadcast.emit("peer-disconnected", socket.id);
   });
 });
 
-// 서버 시작
-httpServer.listen(port, () => {
-  console.log(`> Ready on http://localhost:${port}`);
+httpServer.listen(4000, () => {
+  console.log(`HTTP WebSocket server running on port 4000`);
 });
