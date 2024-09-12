@@ -28,9 +28,18 @@ app.prepare().then(() => {
       // console.log(`>>>joined room :  ${socket.id}가 ${roomId} 으로 입장 `);
     });
 
-    socket.on("chat-message", (roomId: string, message: string) => {
-      io.to(roomId).emit("receive-message", message);
-    });
+    socket.on(
+      "chat-message",
+      (roomId: string, message: { userId: string; text: string }) => {
+        console.log(
+          `User ${socket.id}, ${roomId} chat message: ${message.text}`,
+        );
+        io.to(roomId).emit("receive-message", {
+          userId: message.userId,
+          text: message.text,
+        });
+      },
+    );
 
     socket.on("disconnect", () => {
       console.log(`User disconnected: ${socket.id}`);

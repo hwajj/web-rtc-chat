@@ -6,9 +6,10 @@ interface ChatRoomProps {
 }
 
 export default function ChatRoom({ roomId }: ChatRoomProps) {
-  const { messages, newMessage, setNewMessage, sendMessage } = useChat({
-    roomId,
-  });
+  const { messages, newMessage, setNewMessage, sendMessage, socketId } =
+    useChat({
+      roomId,
+    });
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
@@ -18,11 +19,19 @@ export default function ChatRoom({ roomId }: ChatRoomProps) {
   };
 
   return (
-    <div className="chat-room">
-      <div className="messages">
+    <div className="chat-room absolute bottom-[3rem] w-[calc(100%-3rem)] ">
+      <div className="messages h-full overflow-y-scroll">
         {messages.map((msg, index) => (
-          <div key={index} className="message">
-            {msg}
+          <div
+            key={index}
+            className={`message ${
+              msg.userId === socketId
+                ? "text-right text-blue-500 "
+                : "message-left text-gray-600"
+            } overflow-y-scroll text-shadow`}
+          >
+            <span className="message-user">{msg.userId}: </span>
+            <span> {msg.text}</span>
           </div>
         ))}
       </div>
