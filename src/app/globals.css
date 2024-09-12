@@ -44,3 +44,8 @@ body {
 .text-shadow {
   text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
 }
+
+.text-wrap {
+  white-space: normal; /* 기본 줄바꿈 */
+  overflow-wrap: break-word; /* 단어가 길면 자동 줄바꿈 */
+}

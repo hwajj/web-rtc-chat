@@ -1,4 +1,3 @@
-import Image from "next/image";
 import { getRooms } from "@/lib/getRooms";
 import RoomList from "@/components/RoomList";
 

@@ -7,7 +7,7 @@ interface RoomListProps {
 }
 
 export default function RoomList({ initialRooms }: RoomListProps) {
-  const [rooms, setRooms] = useState(initialRooms);
+  const [rooms] = useState(initialRooms);
   const router = useRouter();
   const enterRoom = (roomId: string) => {
     router.push(`/room/${roomId}`);
@@ -18,7 +18,7 @@ export default function RoomList({ initialRooms }: RoomListProps) {
         <li
           key={room.id}
           onClick={() => enterRoom(room.id)}
-          className="cursor-pointer w-full border-red rounded-2xl h-20 flex items-center justify-start p-2"
+          className="cursor-pointer border-black border-2 w-full bg-white rounded-2xl h-20 flex items-center justify-start p-2"
         >
           {room.name}
         </li>

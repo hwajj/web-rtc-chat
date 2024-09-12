@@ -13,7 +13,7 @@ app.prepare().then(() => {
   const httpServer = createServer(handler);
 
   const io = new Server(httpServer, {
-    path: "/api/socket",
+    path: "/socket.io",
     cors: {
       origin: "*",
       methods: ["GET", "POST"],
@@ -25,7 +25,7 @@ app.prepare().then(() => {
 
     socket.on("join-room", (roomId: string) => {
       socket.join(roomId);
-      // console.log(`>>>joined room :  ${socket.id}가 ${roomId} 으로 입장 `);
+      console.log(`>>>joined room :  ${socket.id}가 ${roomId} 으로 입장 `);
     });
 
     socket.on(

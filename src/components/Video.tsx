@@ -1,20 +1,49 @@
-import { useEffect, useRef } from 'react';
-import { Peer } from 'simple-peer';
+"use client";
 
-interface VideoProps {
-  peer: Peer.Instance; // SimplePeer 타입 지정
-}
+import useWebRTC from "@/hooks/useWebRTC";
 
-export default function Video({ peer }: VideoProps) {
-  const ref = useRef<HTMLVideoElement | null>(null); // HTMLVideoElement 타입 지정
+export default function Video({ roomId }: { roomId: string }) {
+  const { localVideoRef, peerConnections } = useWebRTC(roomId); // 여러 피어 연결
 
-  useEffect(() => {
-    peer.on('stream', (stream) => {
-      if (ref.current) {
-        ref.current.srcObject = stream;
-      }
-    });
-  }, [peer]);
+  const gridClass =
+    peerConnections.length === 0
+      ? "grid-cols-1 "
+      : peerConnections.length < 2
+        ? "grid-cols-2 grid-rows-1"
+        : peerConnections.length < 4
+          ? "grid-cols-2 grid-rows-2"
+          : "grid-cols-3 grid-rows-3";
 
-  return <video ref={ref} autoPlay className="w-1/2 h-auto" />;
+  return (
+    <div className={"overflow-hidden h-full"}>
+      <div className={`grid ${gridClass} gap-4`}>
+        {/* 원격 비디오 */}
+        {peerConnections.map((peer, index) => (
+          <div key={index} className="relative order-1">
+            <h2 className="text-lg px-1 text-white text-shadow absolute">
+              Remote Video {index + 1}
+            </h2>
+            <video
+              ref={peer.remoteVideoRef}
+              autoPlay
+              playsInline
+              className=" w-full h-auto object-contain aspect-video"
+            />
+          </div>
+        ))}
+        {/* 로컬 비디오 */}
+        <div className="relative order-last">
+          <h2 className="text-lg px-1 text-white text-shadow absolute">
+            Local Video
+          </h2>
+          <video
+            ref={localVideoRef}
+            autoPlay
+            playsInline
+            className=" object-contain aspect-video w-auto h-full lg:w-full lg:h-auto"
+          />
+        </div>
+      </div>
+    </div>
+  );
 }

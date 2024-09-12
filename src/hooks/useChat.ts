@@ -17,17 +17,17 @@ export default function useChat({ roomId }: UseChatProps) {
 
   useEffect(() => {
     const socketConnection = io("http://localhost:3000", {
-      path: "/api/socket",
+      path: "/socket.io",
     });
 
     // 서버로부터 소켓 ID 받기
     socketConnection.on("connect", () => {
-      setSocketId(socketConnection.id); // 소켓 ID 저장
+      setSocketId(socketConnection.id as string); // 소켓 ID 저장
       console.log(">>> 소켓아이디 ", socketConnection.id);
     });
 
     // 서버에서 메시지 수신
-    socketConnection.on("receive-message", (message: string) => {
+    socketConnection.on("receive-message", (message: Message) => {
       setMessages((prevMessages) => [...prevMessages, message]);
     });
 
@@ -37,6 +37,7 @@ export default function useChat({ roomId }: UseChatProps) {
     setSocket(socketConnection);
 
     return () => {
+      socketConnection.off("receive-message"); // 기존 리스너 제거
       socketConnection.disconnect();
     };
   }, [roomId]);
@@ -44,10 +45,17 @@ export default function useChat({ roomId }: UseChatProps) {
   const sendMessage = () => {
     if (socket && newMessage.trim()) {
       const message = { userId: socketId, text: newMessage }; // 사용자 ID와 메시지를 객체로 보냄
-      socket.emit("chat-message", roomId, message); // 서버로 메시지 전송
       setNewMessage(""); // 메시지 입력란 초기화
+      console.log(newMessage);
+      socket.emit("chat-message", roomId, message); // 서버로 메시지 전송
     }
   };
 
-  return { messages, newMessage, setNewMessage, sendMessage, socketId };
+  return {
+    messages,
+    newMessage,
+    setNewMessage,
+    sendMessage,
+    socketId,
+  };
 }

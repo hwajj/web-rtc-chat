@@ -13,10 +13,9 @@ const geistMono = localFont({
   weight: "100 900",
 });
 
-
 export const metadata = {
-  title: 'WebRTC Chat',
-  description: 'A simple WebRTC video chat app',
+  title: "WebRTC Chat",
+  description: "A simple WebRTC video chat app",
 };
 
 export default function RootLayout({
@@ -27,9 +26,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} px-10 pt-10 pb-2 antialiased w-screen h-screen m-0 p-0 flex flex-col absolute`}
+        className={`${geistSans.variable} ${geistMono.variable} bg-yellow-50 px-10 py-10 antialiased w-screen h-screen m-0 p-0 flex flex-col absolute`}
       >
-        <header className='p-2 flex items-baseline'>
+        <header className="p-2 flex items-baseline">
           <Image
             className="dark:invert"
             src="/logo2.png"
@@ -39,12 +38,8 @@ export default function RootLayout({
             priority
           />
         </header>
-
-
         {children}
-        <footer className=' mt-auto'>
-          hjeong
-        </footer>
+        {/*<footer className="py-2 mt-auto border-red text-center">jeong</footer>*/}
       </body>
     </html>
   );
