@@ -1,5 +1,5 @@
 {
-  "watch": ["next-server.ts"],
-  "exec": "ts-node --project tsconfig.server.json server.ts",
+  "watch": ["nextserver.ts"],
+  "exec": "ts-node --project tsconfig.server.json nextserver.ts",
   "ext": "js ts"
 }

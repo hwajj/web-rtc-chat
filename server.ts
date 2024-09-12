@@ -11,7 +11,7 @@ const httpServer = createServer();
 const io = new Server(httpServer, {
   path: "/socket.io",
   cors: {
-    origin: ["http://localhost:4000", "https://dae-hwa-cheong.netlify.app"],
+    origin: ["http://localhost:4000", "https://dae-hwa-jeong.netlify.app"],
     methods: ["GET", "POST"],
   },
 });
