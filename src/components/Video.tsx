@@ -4,7 +4,11 @@ import useWebRTC from "@/hooks/useWebRTC";
 
 export default function Video({ roomId }: { roomId: string }) {
   const { localVideoRef, peerConnections } = useWebRTC(roomId); // 여러 피어 연결
-
+  console.log(peerConnections.length);
+  console.log(
+    "================================================================",
+  );
+  peerConnections.map((p) => console.log(p.peerId));
   const gridClass =
     peerConnections.length === 0
       ? "grid-cols-1 "
