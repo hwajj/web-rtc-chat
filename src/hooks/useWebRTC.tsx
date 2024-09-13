@@ -1,18 +1,15 @@
-import { useState, createRef, useEffect, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { getSocket } from "@/socket/socket";
 
 interface PeerConnection {
   peerId: string;
   peerConnection: RTCPeerConnection;
-  remoteVideoRef: React.RefObject<HTMLVideoElement>;
+  videoElement: HTMLVideoElement; // 동적으로 생성된 비디오 요소
 }
 
 export default function useWebRTC(roomId: string) {
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const [peerConnections, setPeerConnections] = useState<PeerConnection[]>([]);
-  const remoteVideoRefs = useRef<
-    Map<string, React.RefObject<HTMLVideoElement>>
-  >(new Map());
   const socketRef = useRef<any>(null);
 
   useEffect(() => {
@@ -24,10 +21,13 @@ export default function useWebRTC(roomId: string) {
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: true,
+          video: {
+            width: { max: 640 }, // 최대 너비 640px로 제한
+            height: { max: 480 }, // 최대 높이 480px로 제한
+            frameRate: { max: 15 }, // 프레임 레이트 제한 (예: 15fps)
+          },
           audio: true,
         });
-
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = stream;
         }
@@ -37,88 +37,104 @@ export default function useWebRTC(roomId: string) {
 
         socket.emit("join-room", roomId);
 
-        // 싱글턴 패턴을 사용하여 피어 연결 관리
         const createPeerConnection = (peerId: string): RTCPeerConnection => {
-          // 이미 해당 피어에 대한 연결이 있으면 해당 연결 반환
           let existingPeer = peerConnections.find(
             (peer) => peer.peerId === peerId,
           );
           if (existingPeer) {
-            return existingPeer.peerConnection; // 기존 연결 반환
+            console.log(
+              "existingPeer found, reusing the connection for:",
+              peerId,
+            );
+            return existingPeer.peerConnection;
           }
 
-          // 새로운 연결 생성
           const peerConnection = new RTCPeerConnection({
             iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
           });
+          // 로컬 스트림의 트랙을 피어 연결에 추가
+          stream.getTracks().forEach((track) => {
+            peerConnection.addTrack(track, stream);
+            console.log("Track added to peerConnection:", track);
+          });
+          const videoElement = document.createElement("video");
+          videoElement.className = "w-full h-auto"; // 비디오 요소 스타일 적용
+          videoElement.autoplay = true;
+          videoElement.muted = true; // 브라우저 정책 상 muted가 설정되어야 autoplay가 동작함
+          document.getElementById("video-grid")?.appendChild(videoElement); // 동적 추가
 
-          // ontrack 이벤트에서 리모트 비디오 연결 확인
           peerConnection.ontrack = (event) => {
-            const ref = remoteVideoRefs.current.get(peerId);
-            if (ref && ref.current) {
-              ref.current.srcObject = event.streams[0]; // 비디오 스트림 할당
-              console.log(`Video ref successfully set for peer: ${peerId}`);
+            console.log("Stream received for peerId:", peerId, event.streams);
+            if (event.streams && event.streams[0]) {
+              console.log(videoElement);
+              videoElement.srcObject = event.streams[0]; // 스트림 할당
+              videoElement.addEventListener("loadedmetadata", () => {
+                console.log("addEventListener loadedmetadata for", peerId);
+                videoElement.play().catch((e) => {
+                  console.error("Error playing video for peerId:", peerId, e);
+                });
+              });
             } else {
-              console.error(`Remote video ref not set for peer: ${peerId}`);
+              console.error("No streams available for peerId:", peerId);
             }
           };
 
           peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
-              socket.emit("ice-candidate", peerId, event.candidate);
+              socketRef.current.emit("ice-candidate", peerId, event.candidate);
             }
           };
 
-          // 피어 연결 상태 저장
-          setPeerConnections((prevConnections) => [
-            ...prevConnections,
-            {
-              peerId,
-              peerConnection,
-              remoteVideoRef:
-                remoteVideoRefs.current.get(peerId) ?? createRef(),
-            },
-          ]);
+          // 상태를 업데이트할 때 중복을 방지하는 로직
+          setPeerConnections((prevConnections) => {
+            // 중복된 peerId가 있으면 이전 연결 상태를 유지하고 추가하지 않음
+            if (prevConnections.some((peer) => peer.peerId === peerId)) {
+              return prevConnections;
+            }
+
+            return [
+              ...prevConnections,
+              { peerId, peerConnection, videoElement },
+            ];
+          });
 
           return peerConnection;
         };
 
-        // 새 피어가 연결될 때
         const handleNewPeer = async (peerId: string) => {
-          if (socket.id === peerId) {
-            console.log(`Ignored own peer ID: ${peerId}`);
-            return; // 자신의 소켓 ID인 경우 무시
-          }
+          if (socketRef.current.id === peerId) return; // 자신과 연결을 방지
 
-          if (peerConnections.some((peer) => peer.peerId === peerId)) {
-            console.log(`Peer already connected: ${peerId}`);
-            return; // 중복된 피어 연결 방지
-          }
-
-          // 새로운 피어가 offer를 만들고 보냄
           const peerConnection = createPeerConnection(peerId);
           const offer = await peerConnection.createOffer();
           await peerConnection.setLocalDescription(offer);
-          socket.emit("offer", peerId, offer);
+          console.log(
+            "Created offer and setLocalDescription for peerId:",
+            peerId,
+          );
+          socketRef.current.emit("offer", peerId, offer);
         };
 
-        // 새 피어가 연결될 때만 offer 생성
-        socket.on("new-peer", handleNewPeer);
-
-        // Offer 수신
-        socket.on(
+        socketRef.current.on("new-peer", handleNewPeer);
+        socketRef.current.on(
           "offer",
           async (peerId: string, offer: RTCSessionDescriptionInit) => {
-            const peerConnection = createPeerConnection(peerId); // 중복 피어 연결 방지
+            const peerConnection = createPeerConnection(peerId);
             await peerConnection.setRemoteDescription(offer);
+            console.log(
+              "Received offer and setRemoteDescription for peerId:",
+              peerId,
+            );
             const answer = await peerConnection.createAnswer();
             await peerConnection.setLocalDescription(answer);
-            socket.emit("answer", peerId, answer);
+            console.log(
+              "Created answer and setLocalDescription for peerId:",
+              peerId,
+            );
+            socketRef.current.emit("answer", peerId, answer);
           },
         );
 
-        // Answer 수신
-        socket.on(
+        socketRef.current.on(
           "answer",
           async (peerId: string, answer: RTCSessionDescriptionInit) => {
             const peerConnection = peerConnections.find(
@@ -130,8 +146,7 @@ export default function useWebRTC(roomId: string) {
           },
         );
 
-        // ICE Candidate 수신
-        socket.on(
+        socketRef.current.on(
           "ice-candidate",
           (peerId: string, candidate: RTCIceCandidate) => {
             const peerConnection = peerConnections.find(
@@ -142,9 +157,49 @@ export default function useWebRTC(roomId: string) {
             }
           },
         );
+        socketRef.current.on(
+          "offer",
+          async (peerId: string, offer: RTCSessionDescriptionInit) => {
+            const peerConnection = createPeerConnection(peerId);
+            await peerConnection.setRemoteDescription(offer);
+            console.log(
+              "Received offer and setRemoteDescription for peerId:",
+              peerId,
+            );
+            const answer = await peerConnection.createAnswer();
+            await peerConnection.setLocalDescription(answer);
+            console.log(
+              "Created answer and setLocalDescription for peerId:",
+              peerId,
+            );
+            socketRef.current.emit("answer", peerId, answer);
+          },
+        );
 
-        // 피어가 연결 해제될 때
-        socket.on("peer-disconnected", (peerId: string) => {
+        socketRef.current.on(
+          "answer",
+          async (peerId: string, answer: RTCSessionDescriptionInit) => {
+            const peerConnection = peerConnections.find(
+              (peer) => peer.peerId === peerId,
+            )?.peerConnection;
+            if (peerConnection) {
+              await peerConnection.setRemoteDescription(answer);
+            }
+          },
+        );
+
+        socketRef.current.on(
+          "ice-candidate",
+          (peerId: string, candidate: RTCIceCandidate) => {
+            const peerConnection = peerConnections.find(
+              (peer) => peer.peerId === peerId,
+            )?.peerConnection;
+            if (peerConnection) {
+              peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+            }
+          },
+        );
+        socketRef.current.on("peer-disconnected", (peerId: string) => {
           const updatedConnections = peerConnections.filter(
             (peer) => peer.peerId !== peerId,
           );
@@ -154,35 +209,31 @@ export default function useWebRTC(roomId: string) {
             (peer) => peer.peerId === peerId,
           )?.peerConnection;
           if (peerConnection) peerConnection.close();
-
-          remoteVideoRefs.current.delete(peerId);
         });
 
         return () => {
-          socket.off("new-peer", handleNewPeer);
-          socket.emit("leave-room");
-          socket.disconnect();
+          socketRef.current.off("new-peer", handleNewPeer);
+          socketRef.current.emit("leave-room");
+          socketRef.current.disconnect();
           peerConnections.forEach(({ peerConnection }) =>
             peerConnection.close(),
           );
-          setPeerConnections([]); // 연결 해제 시 상태 초기화
+          setPeerConnections([]);
         };
       } catch (error) {
         console.error("미디어 장치 접근 중 오류 발생:", error);
       }
     };
-
     setupWebRTC();
-  }, [roomId]);
+  }, [peerConnections, roomId]);
 
   const leaveRoom = () => {
     if (socketRef.current) {
-      console.log(socketRef.current, "leaveRoom");
-      socketRef.current.emit("leave-room", roomId); // 서버에 leave-room 이벤트 전송
-      socketRef.current.disconnect(); // 소켓 연결 해제
+      socketRef.current.emit("leave-room", roomId);
+      socketRef.current.disconnect();
     }
-    peerConnections.forEach(({ peerConnection }) => peerConnection.close()); // WebRTC 연결 종료
-    setPeerConnections([]); // 연결 목록 초기화
+    peerConnections.forEach(({ peerConnection }) => peerConnection.close());
+    setPeerConnections([]);
   };
 
   return {

@@ -22,12 +22,13 @@ app.prepare().then(() => {
   });
 
   io.on("connection", (socket) => {
-    console.log(`User connected: ${socket.id}`);
+    console.log(`User connected:This user  ${socket.id}`);
 
     // 방에 참여했을 때
     socket.on("join-room", (roomId: string) => {
       // 소켓이 이미 방에 있는지 확인
-      if (!socket.rooms.has(roomId)) {
+      if (!Array.from(socket.rooms).includes(roomId)) {
+        // 방에 있는지 확인
         socket.join(roomId);
         console.log(`User ${socket.id} joined room ${roomId}`);
 

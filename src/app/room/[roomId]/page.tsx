@@ -11,8 +11,10 @@ interface RoomPageProps {
 
 export default function RoomPage({ params }: RoomPageProps) {
   const { roomId } = params;
-  const { leaveRoom } = useWebRTC(roomId); // useWebRTC 훅에서 leaveRoom 함수를 받아옴
-  const router = useRouter(); // useRouter 훅을 사용하여 페이지 이동 제어
+  const { localVideoRef, peerConnections, leaveRoom } = useWebRTC(roomId);
+  console.log(peerConnections);
+  const router = useRouter();
+
   const handleLeaveRoom = () => {
     leaveRoom(); // 방을 나갈 때 호출
     router.push("/"); // 방을 나간 후 루트 경로로 리다이렉트
@@ -29,7 +31,28 @@ export default function RoomPage({ params }: RoomPageProps) {
         </button>
       </div>
       <div className="flex flex-col h-full lg:flex-row lg:gap-6">
-        <Video roomId={roomId} />
+        {/* 비디오를 담을 그리드 */}
+        <div id="video-grid" className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {/* 로컬 비디오 */}
+          <video
+            ref={localVideoRef}
+            autoPlay
+            muted
+            className="w-full h-auto border-red"
+          />
+
+          {/* 피어 연결된 비디오들 */}
+          {peerConnections.map((peer, index) => (
+            <video
+              key={`${peer.peerId}-${index}`} // 고유한 키를 보장하기 위해 인덱스 추가
+              ref={(el) => {
+                if (el) peer.videoElement = el;
+              }}
+              autoPlay
+              className="w-full h-auto"
+            />
+          ))}
+        </div>
 
         <ChatRoom roomId={roomId!} />
       </div>

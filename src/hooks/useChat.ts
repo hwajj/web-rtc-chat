@@ -17,7 +17,7 @@ export default function useChat({ roomId }: UseChatProps) {
 
   useEffect(() => {
     const socket = getSocket();
-
+    console.log(socket);
     // 서버로부터 소켓 ID 받기
     socket.on("connect", () => {
       setSocketId(socket.id); // 소켓 ID 저장
