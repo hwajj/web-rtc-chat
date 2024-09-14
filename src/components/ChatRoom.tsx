@@ -29,7 +29,7 @@ export default function ChatRoom({ roomId }: ChatRoomProps) {
   };
 
   return (
-    <div className="chat-room mt-auto w-full gap-4 flex flex-col h-40 lg:w-96 lg:h-full lg:ml-auto">
+    <div className="chat-room mt-auto w-full gap-4 flex flex-col h-52 ">
       <div className="messages h-full my-1 overflow-y-auto p-1 bg-yellow-50 rounded-3xl px-2">
         {messages.map((msg, index) => (
           <div
