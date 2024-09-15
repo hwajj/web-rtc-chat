@@ -1,17 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 import { getSocket } from "@/socket/socket";
-
+import { Socket } from "socket.io-client";
 interface PeerConnection {
   peerId: string;
   peerConnection: RTCPeerConnection;
-  videoElement: HTMLVideoElement; // 동적으로 생성된 비디오 요소
+  videoElement: HTMLVideoElement | null; // 동적으로 생성된 비디오 요소
   stream?: MediaStream; // 스트림 추가
 }
 
 export default function useWebRTC(roomId: string) {
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
   const [peerConnections, setPeerConnections] = useState<PeerConnection[]>([]);
-  const socketRef = useRef<any>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     const setupWebRTC = async () => {
@@ -39,8 +39,8 @@ export default function useWebRTC(roomId: string) {
         socket.emit("join-room", roomId);
 
         const createPeerConnection = (peerId: string): RTCPeerConnection => {
-          console.log("createPeerConnection", peerId);
-          let existingPeer = peerConnections.find(
+          // console.log("createPeerConnection", peerId);
+          const existingPeer = peerConnections.find(
             (peer) => peer.peerId === peerId,
           );
           if (existingPeer) {
@@ -67,12 +67,16 @@ export default function useWebRTC(roomId: string) {
               console.log("Track already exists, skipping:", track.id);
             }
           });
-          let videoElement: any = document.createElement("video");
-          videoElement.style =
-            "width:auto; height:100%; object-fit:cover; max-width:100%; max-height:100%;";
+          let videoElement: HTMLVideoElement | null =
+            document.createElement("video");
+          videoElement.style.width = "auto";
+          videoElement.style.height = "100%";
+          videoElement.style.objectFit = "cover";
+          videoElement.style.maxWidth = "100%";
+          videoElement.style.maxHeight = "100%";
           videoElement.autoplay = true;
           videoElement.muted = true; // 브라우저 정책 상 muted가 설정되어야 autoplay가 동작함
-          // **중복된 peerId가 없을 경우에만 비디오 요소 추가**
+          // 중복된 peerId가 없을 경우에만 비디오 요소 추가
           // 비디오 중복 체크 (이미 추가된 비디오 요소가 없으면 추가)
           if (!document.getElementById(peerId)) {
             videoElement.id = peerId; // peerId를 video ID로 설정해 중복 체크 가능하게 함
@@ -120,12 +124,12 @@ export default function useWebRTC(roomId: string) {
           // ICE 후보 발생 시 소켓으로 전송
           peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
-              socketRef.current.emit("ice-candidate", peerId, event.candidate);
+              socketRef.current?.emit("ice-candidate", peerId, event.candidate);
             }
           };
 
           // 상태를 업데이트할 때 중복을 방지하는 로직
-          setPeerConnections((prevConnections) => {
+          setPeerConnections((prevConnections: PeerConnection[]) => {
             // 중복된 peerId가 있으면 이전 연결 상태를 유지하고 추가하지 않음
             if (prevConnections.some((peer) => peer.peerId === peerId)) {
               return prevConnections;
@@ -136,12 +140,11 @@ export default function useWebRTC(roomId: string) {
               { peerId, peerConnection, videoElement },
             ];
           });
-
           return peerConnection;
         };
         // 새로운 피어가 방에 들어왔을 때 처리
         const handleNewPeer = async (peerId: string) => {
-          if (socketRef.current.id === peerId) return; // 자신과 연결을 방지
+          if (socketRef.current?.id === peerId) return; // 자신과 연결을 방지
 
           const peerConnection = createPeerConnection(peerId);
           const offer = await peerConnection.createOffer();
@@ -150,13 +153,13 @@ export default function useWebRTC(roomId: string) {
             "Created offer and setLocalDescription for peerId:",
             peerId,
           );
-          socketRef.current.emit("offer", peerId, offer);
+          socketRef.current?.emit("offer", peerId, offer);
         };
 
-        socketRef.current.on("new-peer", handleNewPeer);
+        socketRef.current?.on("new-peer", handleNewPeer);
 
         // 피어로부터 오퍼 수신 시 처리
-        socketRef.current.on(
+        socketRef.current?.on(
           "offer",
           async (peerId: string, offer: RTCSessionDescriptionInit) => {
             const peerConnection = createPeerConnection(peerId);
@@ -171,12 +174,12 @@ export default function useWebRTC(roomId: string) {
               "Created answer and setLocalDescription for peerId:",
               peerId,
             );
-            socketRef.current.emit("answer", peerId, answer);
+            socketRef.current?.emit("answer", peerId, answer);
           },
         );
 
         // 피어로부터 응답(answer) 수신 시 처리
-        socketRef.current.on(
+        socketRef.current?.on(
           "answer",
           async (peerId: string, answer: RTCSessionDescriptionInit) => {
             const peerConnection = peerConnections.find(
@@ -206,7 +209,7 @@ export default function useWebRTC(roomId: string) {
         );
 
         // ICE 후보 수신 시 처리
-        socketRef.current.on(
+        socketRef.current?.on(
           "ice-candidate",
           (peerId: string, candidate: RTCIceCandidate) => {
             const peerConnection = peerConnections.find(
@@ -218,7 +221,7 @@ export default function useWebRTC(roomId: string) {
           },
         );
 
-        socketRef.current.on("peer-disconnected", (peerId: string) => {
+        socketRef.current?.on("peer-disconnected", (peerId: string) => {
           // **1단계: peerConnections 상태 업데이트**
           setPeerConnections((prevConnections) =>
             prevConnections.filter((peer) => peer.peerId !== peerId),
@@ -239,9 +242,9 @@ export default function useWebRTC(roomId: string) {
         });
 
         return () => {
-          socketRef.current.off("new-peer", handleNewPeer);
-          socketRef.current.emit("leave-room");
-          socketRef.current.disconnect();
+          socketRef.current?.off("new-peer", handleNewPeer);
+          socketRef.current?.emit("leave-room");
+          socketRef.current?.disconnect();
           peerConnections.forEach(({ peerConnection }) =>
             peerConnection.close(),
           );
@@ -256,8 +259,8 @@ export default function useWebRTC(roomId: string) {
 
   const leaveRoom = () => {
     if (socketRef.current) {
-      socketRef.current.emit("leave-room", roomId);
-      socketRef.current.disconnect();
+      socketRef.current?.emit("leave-room", roomId);
+      socketRef.current?.disconnect();
     }
     peerConnections.forEach(({ peerConnection }) => peerConnection.close());
     setPeerConnections([]);
@@ -271,7 +274,7 @@ export default function useWebRTC(roomId: string) {
           const videoElement = document.getElementById(peer.peerId);
           if (videoElement) {
             videoElement.remove(); // 유효하지 않은 연결의 비디오 요소 삭제
-            console.log("Invalid peer removed:", peer.peerId);
+            // console.log("Invalid peer removed:", peer.peerId);
           }
           return false; // 유효하지 않은 피어는 필터링
         }

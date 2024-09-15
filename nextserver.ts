@@ -22,7 +22,7 @@ app.prepare().then(() => {
   });
 
   io.on("connection", (socket) => {
-    console.log(`User connected:This user  ${socket.id}`);
+    // console.log(`User connected:This user  ${socket.id}`);
 
     // 방에 참여했을 때
     socket.on("join-room", (roomId: string) => {
@@ -30,7 +30,7 @@ app.prepare().then(() => {
       if (!Array.from(socket.rooms).includes(roomId)) {
         // 방에 있는지 확인
         socket.join(roomId);
-        console.log(`User ${socket.id} joined room ${roomId}`);
+        // console.log(`User ${socket.id} joined room ${roomId}`);
 
         // 자신을 제외한 다른 사용자들에게 새로운 피어 연결 알림
         socket.to(roomId).emit("new-peer", socket.id);
@@ -41,9 +41,9 @@ app.prepare().then(() => {
     socket.on(
       "chat-message",
       (roomId: string, message: { userId: string; text: string }) => {
-        console.log(
-          `User ${socket.id}, ${roomId} chat message: ${message.text}`,
-        );
+        // console.log(
+        //   `User ${socket.id}, ${roomId} chat message: ${message.text}`,
+        // );
         io.to(roomId).emit("receive-message", {
           userId: message.userId,
           text: message.text,
@@ -54,26 +54,26 @@ app.prepare().then(() => {
     // WebRTC Offer 처리
     socket.on("offer", (peerId: string, offer) => {
       socket.to(peerId).emit("offer", socket.id, offer);
-      console.log(`Offer sent from ${socket.id} to ${peerId}`);
+      // console.log(`Offer sent from ${socket.id} to ${peerId}`);
     });
 
     // WebRTC Answer 처리
     socket.on("answer", (peerId: string, answer) => {
       socket.to(peerId).emit("answer", socket.id, answer);
-      console.log(`Answer sent from ${socket.id} to ${peerId}`);
+      // console.log(`Answer sent from ${socket.id} to ${peerId}`);
     });
 
     // ICE Candidate 처리
     socket.on("ice-candidate", (peerId: string, candidate) => {
       socket.to(peerId).emit("ice-candidate", socket.id, candidate);
-      console.log(`ICE candidate sent from ${socket.id} to ${peerId}`);
+      // console.log(`ICE candidate sent from ${socket.id} to ${peerId}`);
     });
 
     // 방을 나갈 때
     socket.on("leave-room", (roomId: string) => {
       if (socket.rooms.has(roomId)) {
         socket.leave(roomId); // 방 나가기
-        console.log(`User ${socket.id} left room ${roomId}`);
+        // console.log(`User ${socket.id} left room ${roomId}`);
         socket.to(roomId).emit("peer-disconnected", socket.id); // 다른 사용자에게 알림
       }
     });
@@ -82,7 +82,7 @@ app.prepare().then(() => {
     socket.on("disconnect", () => {
       socket.rooms.forEach((roomId) => {
         socket.leave(roomId);
-        console.log(`User ${socket.id} disconnected from room ${roomId}`);
+        // console.log(`User ${socket.id} disconnected from room ${roomId}`);
         socket.to(roomId).emit("peer-disconnected", socket.id); // 다른 사용자에게 알림
       });
     });

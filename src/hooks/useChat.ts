@@ -20,7 +20,7 @@ export default function useChat({ roomId }: UseChatProps) {
     console.log(socket);
     // 서버로부터 소켓 ID 받기
     socket.on("connect", () => {
-      setSocketId(socket.id); // 소켓 ID 저장
+      setSocketId(socket.id as string); // 소켓 ID 저장
       console.log(">>> 소켓아이디 ", socket.id);
     });
 
