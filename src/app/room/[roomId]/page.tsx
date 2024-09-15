@@ -58,7 +58,7 @@ export default function RoomPage({ params }: RoomPageProps) {
         </button>
       </div>
       {/* 비디오를 담을 그리드 */}
-      <div id="video-grid" className={`grid ${gridClass}`}>
+      <div id="video-grid" className={`grid grid-cols-2`}>
         {/* 로컬 비디오 */}
         <video
           id={socket.id}

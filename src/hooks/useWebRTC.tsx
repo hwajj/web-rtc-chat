@@ -78,8 +78,13 @@ export default function useWebRTC(roomId: string) {
             document.getElementById("video-grid")?.appendChild(videoElement); // 동적 추가
           } else {
             videoElement = null;
-            console.log("Video element for peerId already exists:", peerId);
+            console.log(
+              "*****Video element for peerId already exists:",
+              peerId,
+            );
           }
+
+          // ontrack 이벤트: 피어로부터 스트림 수신 시 처리
           peerConnection.ontrack = (event) => {
             console.log("Stream received for peerId:", peerId, event.streams);
             if (event.streams && event.streams[0] && videoElement) {
@@ -111,7 +116,7 @@ export default function useWebRTC(roomId: string) {
               console.error("No streams available for peerId:", peerId);
             }
           };
-
+          // ICE 후보 발생 시 소켓으로 전송
           peerConnection.onicecandidate = (event) => {
             if (event.candidate) {
               socketRef.current.emit("ice-candidate", peerId, event.candidate);
@@ -133,7 +138,7 @@ export default function useWebRTC(roomId: string) {
 
           return peerConnection;
         };
-
+        // 새로운 피어가 방에 들어왔을 때 처리
         const handleNewPeer = async (peerId: string) => {
           if (socketRef.current.id === peerId) return; // 자신과 연결을 방지
 
@@ -148,6 +153,8 @@ export default function useWebRTC(roomId: string) {
         };
 
         socketRef.current.on("new-peer", handleNewPeer);
+
+        // 피어로부터 오퍼 수신 시 처리
         socketRef.current.on(
           "offer",
           async (peerId: string, offer: RTCSessionDescriptionInit) => {
@@ -167,17 +174,7 @@ export default function useWebRTC(roomId: string) {
           },
         );
 
-        // socketRef.current.on(
-        //   "answer",
-        //   async (peerId: string, answer: RTCSessionDescriptionInit) => {
-        //     const peerConnection = peerConnections.find(
-        //       (peer) => peer.peerId === peerId,
-        //     )?.peerConnection;
-        //     if (peerConnection) {
-        //       await peerConnection.setRemoteDescription(answer);
-        //     }
-        //   },
-        // );
+        // 피어로부터 응답(answer) 수신 시 처리
         socketRef.current.on(
           "answer",
           async (peerId: string, answer: RTCSessionDescriptionInit) => {
@@ -206,6 +203,8 @@ export default function useWebRTC(roomId: string) {
             }
           },
         );
+
+        // ICE 후보 수신 시 처리
         socketRef.current.on(
           "ice-candidate",
           (peerId: string, candidate: RTCIceCandidate) => {
@@ -219,16 +218,12 @@ export default function useWebRTC(roomId: string) {
         );
 
         socketRef.current.on("peer-disconnected", (peerId: string) => {
-          const updatedConnections = peerConnections.filter(
-            (peer) => peer.peerId !== peerId,
+          // **1단계: peerConnections 상태 업데이트**
+          setPeerConnections((prevConnections) =>
+            prevConnections.filter((peer) => peer.peerId !== peerId),
           );
-          setPeerConnections(updatedConnections);
 
-          const peerConnection = peerConnections.find(
-            (peer) => peer.peerId === peerId,
-          )?.peerConnection;
-          if (peerConnection) peerConnection.close();
-          // Remove the video element when the peer disconnects
+          // **2단계: 연결된 피어의 videoElement 삭제**
           const videoElement = document.getElementById(peerId);
           if (videoElement) {
             videoElement.remove();
@@ -237,6 +232,9 @@ export default function useWebRTC(roomId: string) {
               peerId,
             );
           }
+
+          // **3단계: 유효하지 않은 연결을 정리**
+          filterValidConnections();
         });
 
         return () => {
@@ -262,6 +260,23 @@ export default function useWebRTC(roomId: string) {
     }
     peerConnections.forEach(({ peerConnection }) => peerConnection.close());
     setPeerConnections([]);
+  };
+  // 유효한 피어 연결만 유지하고 나머지는 제거하는 함수
+  const filterValidConnections = () => {
+    setPeerConnections((prevConnections) => {
+      return prevConnections.filter((peer) => {
+        // 스트림이 존재하고, 연결이 유효한 피어만 남김
+        if (!peer.stream || !peer.peerConnection) {
+          const videoElement = document.getElementById(peer.peerId);
+          if (videoElement) {
+            videoElement.remove(); // 유효하지 않은 연결의 비디오 요소 삭제
+            console.log("Invalid peer removed:", peer.peerId);
+          }
+          return false; // 유효하지 않은 피어는 필터링
+        }
+        return true; // 유효한 피어는 유지
+      });
+    });
   };
 
   return {
