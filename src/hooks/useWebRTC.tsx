@@ -100,6 +100,14 @@ export default function useWebRTC(roomId: string) {
                 );
               });
             } else {
+              // If there's no stream, remove the video element
+              if (videoElement) {
+                videoElement.remove();
+                console.log(
+                  "No streams available for peerId, video removed:",
+                  peerId,
+                );
+              }
               console.error("No streams available for peerId:", peerId);
             }
           };
@@ -220,6 +228,15 @@ export default function useWebRTC(roomId: string) {
             (peer) => peer.peerId === peerId,
           )?.peerConnection;
           if (peerConnection) peerConnection.close();
+          // Remove the video element when the peer disconnects
+          const videoElement = document.getElementById(peerId);
+          if (videoElement) {
+            videoElement.remove();
+            console.log(
+              "Video element removed for disconnected peerId:",
+              peerId,
+            );
+          }
         });
 
         return () => {
