@@ -68,7 +68,8 @@ export default function useWebRTC(roomId: string) {
             }
           });
           let videoElement: any = document.createElement("video");
-          videoElement.style = "width:100%; height:100%; max-width:640px";
+          videoElement.style =
+            "width:auto; height:100%; object-fit:cover; max-width:100%; max-height:100%;";
           videoElement.autoplay = true;
           videoElement.muted = true; // 브라우저 정책 상 muted가 설정되어야 autoplay가 동작함
           // **중복된 peerId가 없을 경우에만 비디오 요소 추가**
