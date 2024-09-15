@@ -4,6 +4,7 @@ import Video from "@/components/Video";
 import useWebRTC from "@/hooks/useWebRTC";
 import { useRouter } from "next/navigation";
 import { getSocket } from "@/socket/socket";
+import { useEffect } from "react";
 interface RoomPageProps {
   params: {
     roomId: string; // roomId를 받음
@@ -22,6 +23,21 @@ export default function RoomPage({ params }: RoomPageProps) {
     router.push("/"); // 방을 나간 후 루트 경로로 리다이렉트
   };
   console.log(peerConnections.length);
+
+  // 새로고침 코드 추가
+  useEffect(() => {
+    // 새로고침을 조건부로 처리하여 무한 새로고침 방지
+    const reloadPage = () => {
+      if (!localStorage.getItem("reloaded")) {
+        localStorage.setItem("reloaded", "true");
+        window.location.reload(); // 새로고침
+      } else {
+        localStorage.removeItem("reloaded"); // 새로고침 이후에는 값 제거
+      }
+    };
+
+    reloadPage();
+  }, []);
 
   const gridClass =
     peerConnections.length < 2
